@@ -9,7 +9,7 @@ app = FastAPI()
 # =========================
 # 1. SUPABASE CONFIG
 # =========================
-SUPABASE_URL = os.getenv("https://eosoiyigcjyjnyfmzqlt.supabase.com")
+SUPABASE_URL = os.getenv("https://eosoiyigcjyjnyfmzqlt.supabase.co")
 SUPABASE_KEY = os.getenv("sb_secret_iaPK5KYnH7hknQTQxRPzdg_MNdYn3iu")
 
 
