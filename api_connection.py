@@ -1,14 +1,20 @@
 from fastapi import FastAPI
-from supabase import create_client
+from fastapi import Request
 
 app = FastAPI()
 
+@app.get("/")
+def home():
+    return {"message": "Cyber Threat API Running"}
+
 @app.post("/cybernews")
-async def receive_news(data: dict):
+async def cybernews(request: Request):
+
+    data = await request.json()
 
     print(data)
 
-    # insert into database
-    # send telegram alert
-
-    return {"status": "received"}
+    return {
+        "status": "received",
+        "data": data
+    }
