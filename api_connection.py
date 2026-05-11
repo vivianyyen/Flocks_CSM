@@ -1,38 +1,87 @@
 from fastapi import FastAPI
-from fastapi import Request
+from pydantic import BaseModel
+from supabase import create_client, Client
+import requests
+import os
 
 app = FastAPI()
 
-@app.get("/")
-def home():
-    return {"message": "Cyber Threat API Running"}
+# =========================
+# 1. SUPABASE CONFIG
+# =========================
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-@app.post("/cybernews")
-async def cybernews(request: Request):
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-    data = await request.json()
+# =========================
+# 2. TELEGRAM CONFIG (optional)
+# =========================
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
-    print(data)
 
-    return {
-        "status": "received",
-        "data": data
-    }
-    
-import requests
+def send_telegram(message: str):
+    if not TELEGRAM_TOKEN or not CHAT_ID:
+        return
 
-TELEGRAM_TOKEN = "8697325888:AAFtrEnNYZOyON9taQvS101gFCFMbl_nkuI"
-CHAT_ID = "1812439245"
-
-def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    data = {
+    requests.post(url, data={
         "chat_id": CHAT_ID,
         "text": message
+    })
+
+
+# =========================
+# 3. DATA MODEL (Flocks JSON)
+# =========================
+class NewsItem(BaseModel):
+    title: str
+    publication_date: str
+    source: str
+    url: str
+    summary: str
+    relevant_keywords: list
+
+
+# =========================
+# 4. INSERT INTO SUPABASE
+# =========================
+def insert_news(item: NewsItem):
+
+    data = {
+        "title": item.title,
+        "publication_date": item.publication_date,
+        "source": item.source,
+        "url": item.url,
+        "summary": item.summary,
+        "relevant_keywords": ",".join(item.relevant_keywords)
     }
-    requests.post(url, data=data)
-    @app.get("/alert")
-    
-def alert():
-    send_telegram("New cyber news detected!")
-    return {"status": "sent"}
+
+    response = supabase.table("cyber_news").insert(data).execute()
+    return response
+
+
+# =========================
+# 5. MAIN INGEST ENDPOINT (FLOCKS CALLS THIS)
+# =========================
+@app.post("/ingest")
+def ingest_news(item: NewsItem):
+
+    result = insert_news(item)
+
+    # optional: trigger alert
+    send_telegram(f"🚨 New Cyber News:\n{item.title}")
+
+    return {
+        "status": "success",
+        "message": "stored in supabase"
+    }
+
+
+# =========================
+# 6. HEALTH CHECK
+# =========================
+@app.get("/")
+def home():
+    return {"status": "API running"}
