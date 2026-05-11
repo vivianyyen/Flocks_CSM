@@ -8,11 +8,11 @@ app = FastAPI()
 # -----------------------------
 # ENVIRONMENT VARIABLES (Railway)
 # -----------------------------
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_URL = os.getenv("https://eosoiyigcjyjnyfmzqlt.supabase.com")
+SUPABASE_KEY = os.getenv("sb_secret_iaPK5KYnH7hknQTQxRPzdg_MNdYn3iu")
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+TELEGRAM_BOT_TOKEN = os.getenv("8697325888:AAFtrEnNYZOyON9taQvS101gFCFMbl_nkuI")
+TELEGRAM_CHAT_ID = os.getenv("cybernews_alertBot")
 
 # -----------------------------
 # SUPABASE CLIENT
