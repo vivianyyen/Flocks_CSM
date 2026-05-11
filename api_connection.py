@@ -9,8 +9,8 @@ app = FastAPI()
 # =========================
 # 1. SUPABASE CONFIG
 # =========================
-SUPABASE_URL = os.getenv("https://eosoiyigcjyjnyfmzqlt.supabase.co")
-SUPABASE_KEY = os.getenv("sb_secret_Ee5zUD0vr1SlxEllYyj46A_-UIgXxTJ")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -18,8 +18,8 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # =========================
 # 2. TELEGRAM CONFIG (optional)
 # =========================
-TELEGRAM_TOKEN = os.getenv("8697325888:AAFtrEnNYZOyON9taQvS101gFCFMbl_nkuI")
-CHAT_ID = os.getenv("1812439245")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
 
 def send_telegram(message: str):
