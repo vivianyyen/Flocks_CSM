@@ -1,6 +1,6 @@
 import streamlit as st
 st.set_page_config(
-    page_title="Incident Intelligence Dashboard",
+    page_title="Cyber Risk Intelligence: Cyber News Dashboard",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
