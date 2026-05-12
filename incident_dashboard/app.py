@@ -210,7 +210,7 @@ new_this_week = len(this_week)
 st.markdown(f"""
 <div class="dash-header">
   <div>
-    <div class="dash-title">🛡️ Incident Intelligence Dashboard</div>
+    <div class="dash-title">🛡️ Cyber Risk Intelligence: Cyber News Dashboard</div>
     <div class="dash-subtitle">Cybersecurity & Threat Monitoring · Real-time feed</div>
   </div>
   <div class="dash-live">
