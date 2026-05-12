@@ -1,6 +1,7 @@
 """
 utils/chatbot.py
 AI analyst chatbot powered by Google Gemini (gemini-2.0-flash).
+Uses google-genai SDK (NOT google-generativeai).
 
 secrets.toml:
     [gemini]
@@ -12,8 +13,7 @@ import pandas as pd
 import json
 
 try:
-    from google import genai
-    from google.genai import types
+    from google.genai import Client, types
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False
@@ -67,17 +67,17 @@ def _build_system_prompt(df: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-# ── Gemini client ─────────────────────────────────────────────────────────────
+# ── Gemini client (new SDK) ───────────────────────────────────────────────────
 
-def _get_model():
+@st.cache_resource(show_spinner=False)
+def _get_client():
     if not GEMINI_AVAILABLE:
         return None, "package_missing"
     if "gemini" not in st.secrets or "api_key" not in st.secrets["gemini"]:
         return None, "missing_key"
     try:
-        genai.configure(api_key=st.secrets["gemini"]["api_key"])
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        return model, "ok"
+        client = Client(api_key=st.secrets["gemini"]["api_key"])
+        return client, "ok"
     except Exception as e:
         return None, str(e)
 
@@ -85,8 +85,6 @@ def _get_model():
 # ── Chat UI ───────────────────────────────────────────────────────────────────
 
 def chatbot_ui(df: pd.DataFrame):
-    """Render the chatbot UI at the bottom of the dashboard."""
-
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
@@ -98,81 +96,52 @@ def chatbot_ui(df: pd.DataFrame):
         "Which incident type is most frequent?",
     ]
 
-    # ── CSS ──────────────────────────────────────────────────────────────────
     st.markdown("""
     <style>
     .chat-container {
-        background: #161b22;
-        border: 1px solid #21262d;
-        border-radius: 12px;
-        padding: 16px 20px;
-        max-height: 420px;
-        overflow-y: auto;
-        margin-bottom: 12px;
+        background: #161b22; border: 1px solid #21262d;
+        border-radius: 12px; padding: 16px 20px;
+        max-height: 420px; overflow-y: auto; margin-bottom: 12px;
     }
     .chat-msg-user {
-        background: #1f3349;
-        border-left: 3px solid #388bfd;
-        padding: 10px 14px;
-        border-radius: 0 8px 8px 0;
-        margin: 8px 0;
-        font-size: 14px;
-        color: #c9d1d9;
+        background: #1f3349; border-left: 3px solid #388bfd;
+        padding: 10px 14px; border-radius: 0 8px 8px 0;
+        margin: 8px 0; font-size: 14px; color: #c9d1d9;
     }
     .chat-msg-bot {
-        background: #1a1f2e;
-        border-left: 3px solid #3fb950;
-        padding: 10px 14px;
-        border-radius: 0 8px 8px 0;
-        margin: 8px 0;
-        font-size: 14px;
-        color: #c9d1d9;
-        line-height: 1.6;
+        background: #1a1f2e; border-left: 3px solid #3fb950;
+        padding: 10px 14px; border-radius: 0 8px 8px 0;
+        margin: 8px 0; font-size: 14px; color: #c9d1d9; line-height: 1.6;
     }
-    .chat-role {
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        margin-bottom: 4px;
-        text-transform: uppercase;
-    }
+    .chat-role { font-size:11px; font-weight:600; letter-spacing:0.08em; margin-bottom:4px; text-transform:uppercase; }
     .user-role { color: #388bfd; }
     .bot-role  { color: #3fb950; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ── Suggestion chips ──────────────────────────────────────────────────────
-    st.markdown(
-        "<p style='font-size:12px;color:#484f58;margin-bottom:6px'>Suggested questions:</p>",
-        unsafe_allow_html=True,
-    )
-    cols = st.columns(len(suggestions))
-    for i, (col, s) in enumerate(zip(cols, suggestions)):
+    # Suggestion chips
+    st.markdown("<p style='font-size:12px;color:#484f58;margin-bottom:6px'>Suggested questions:</p>", unsafe_allow_html=True)
+    chip_cols = st.columns(len(suggestions))
+    for i, (col, s) in enumerate(zip(chip_cols, suggestions)):
         if col.button(s, key=f"suggest_{i}", use_container_width=True):
             st.session_state.chat_history.append({"role": "user", "content": s})
             st.session_state["_pending_q"] = s
 
-    # ── Chat history display ──────────────────────────────────────────────────
+    # Chat history display
     if st.session_state.chat_history:
         chat_html = "<div class='chat-container'>"
         for msg in st.session_state.chat_history:
             if msg["role"] == "user":
-                chat_html += (
-                    f"<div class='chat-msg-user'>"
-                    f"<div class='chat-role user-role'>You</div>"
-                    f"{msg['content']}</div>"
-                )
+                chat_html += (f"<div class='chat-msg-user'>"
+                              f"<div class='chat-role user-role'>You</div>{msg['content']}</div>")
             else:
                 content = msg["content"].replace("\n", "<br>")
-                chat_html += (
-                    f"<div class='chat-msg-bot'>"
-                    f"<div class='chat-role bot-role'>Gemini Analyst</div>"
-                    f"{content}</div>"
-                )
+                chat_html += (f"<div class='chat-msg-bot'>"
+                              f"<div class='chat-role bot-role'>Gemini Analyst</div>{content}</div>")
         chat_html += "</div>"
         st.markdown(chat_html, unsafe_allow_html=True)
 
-    # ── Input form ────────────────────────────────────────────────────────────
+    # Input form
     with st.form("chat_form", clear_on_submit=True):
         user_input = st.text_input(
             "Ask the AI analyst…",
@@ -181,7 +150,6 @@ def chatbot_ui(df: pd.DataFrame):
         )
         submitted = st.form_submit_button("Send →")
 
-    # Resolve question from form or suggestion chip
     question = None
     if submitted and user_input.strip():
         question = user_input.strip()
@@ -189,48 +157,49 @@ def chatbot_ui(df: pd.DataFrame):
     elif "_pending_q" in st.session_state:
         question = st.session_state.pop("_pending_q")
 
-    # ── Generate Gemini response ──────────────────────────────────────────────
+    # Generate response
     if question:
-        model, status = _get_model()
+        client, status = _get_client()
 
         if status == "package_missing":
-            st.error("❌ `google-generativeai` not installed. Add it to `requirements.txt`.")
-
+            st.error("❌ `google-genai` not installed. Ensure `requirements.txt` has `google-genai>=1.0.0`.")
         elif status == "missing_key":
-            st.error(
-                "❌ Gemini API key not found. Add to Streamlit secrets:\n"
-                "```toml\n[gemini]\napi_key = \"AIzaSy-...\"\n```"
-            )
-
-        elif model is None:
-            st.error(f"❌ Gemini initialisation failed: {status}")
-
+            st.error("❌ Gemini API key missing. Add `[gemini]` with `api_key` to Streamlit secrets.")
+        elif client is None:
+            st.error(f"❌ Gemini init failed: {status}")
         else:
             with st.spinner("Gemini analyst is thinking…"):
                 try:
-                    # Inject system prompt as opening user/model exchange
-                    gemini_history = [
-                        {"role": "user",  "parts": [_build_system_prompt(df)]},
-                        {"role": "model", "parts": ["Understood. I am ready to analyse the incident data."]},
-                    ]
-
-                    # Append all previous turns except the latest question
+                    # Build conversation history for the new SDK
+                    contents = []
                     for m in st.session_state.chat_history[:-1]:
                         role = "model" if m["role"] == "assistant" else "user"
-                        gemini_history.append({"role": role, "parts": [m["content"]]})
+                        contents.append(
+                            types.Content(role=role, parts=[types.Part(text=m["content"])])
+                        )
+                    # Add current question
+                    contents.append(
+                        types.Content(role="user", parts=[types.Part(text=question)])
+                    )
 
-                    chat     = model.start_chat(history=gemini_history)
-                    response = chat.send_message(question)
-                    answer   = response.text
-
+                    response = client.models.generate_content(
+                        model="gemini-2.0-flash",
+                        contents=contents,
+                        config=types.GenerateContentConfig(
+                            system_instruction=_build_system_prompt(df),
+                            max_output_tokens=1024,
+                            temperature=0.4,
+                        ),
+                    )
+                    answer = response.text
                     st.session_state.chat_history.append({"role": "assistant", "content": answer})
                     st.rerun()
 
                 except Exception as e:
                     st.error(f"❌ Gemini error: {e}")
 
-    # ── Clear button ──────────────────────────────────────────────────────────
     if st.session_state.chat_history:
         if st.button("🗑️ Clear conversation", type="secondary"):
             st.session_state.chat_history = []
             st.rerun()
+
