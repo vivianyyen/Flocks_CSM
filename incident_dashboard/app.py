@@ -271,12 +271,24 @@ with w2:
     render_wordcloud(df, column="relevant_keywords", title="Relevant Keywords")
 
 # ── Raw data expander ────────────────────────────────────────────────────────
+# ── Raw data expander ────────────────────────────────────────────────────────
 with st.expander("📋 View raw incident data"):
-    st.dataframe(
-        df[["id","title","incident_date","category","incident_type","country","impact","source"]].sort_values("incident_date", ascending=False),
-        use_container_width=True,
-        hide_index=True
-    )
+    # Only select columns that actually exist in your Supabase table
+    preferred = ["id", "title", "incident_date", "category", "incident_type",
+                 "country", "impact", "source"]
+    show_cols = [c for c in preferred if c in df.columns]
+    if not show_cols:
+        show_cols = list(df.columns)
+
+    display_df = df[show_cols].copy()
+    if "incident_date" in display_df.columns:
+        display_df = display_df.sort_values("incident_date", ascending=False)
+
+    st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+    # ← This will print your REAL column names so we can fix any mismatches
+    with st.expander("🔍 Debug: actual column names from Supabase"):
+        st.code(str(list(df.columns)))
 
 # ── AI Chatbot ───────────────────────────────────────────────────────────────
 st.markdown("<div class='section-header'>🤖 AI Analyst — Ask anything about the data</div>", unsafe_allow_html=True)
